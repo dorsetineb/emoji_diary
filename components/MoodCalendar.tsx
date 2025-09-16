@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { MoodEntry, MoodId } from '../types';
+import { MoodEntry } from '../types';
 import { MOODS } from '../constants';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth, subMonths, addMonths, isToday, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, subMonths, addMonths, isToday, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> }> = ({ data, allTags }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const start = startOfMonth(currentDate);
-  const end = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start, end });
+  // State for managing the details panel with animations
+  const [panelPosition, setPanelPosition] = useState<Date | null>(null); // Determines which row the panel renders under
+  const [panelData, setPanelData] = useState<MoodEntry | null>(null); // The data to display
+  const [isPanelVisible, setIsPanelVisible] = useState(false); // Controls animation classes
 
   const dataByDate = useMemo(() => {
     return data.reduce((acc, entry) => {
@@ -19,15 +19,41 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
     }, {} as Record<string, MoodEntry>);
   }, [data]);
   
+  const handleClosePanel = () => {
+    setIsPanelVisible(false);
+    // Delay unmounting until after the animation completes
+    setTimeout(() => {
+      setPanelPosition(null);
+      setPanelData(null);
+    }, 300); // Must match CSS transition duration
+  };
+
   const handleDayClick = (day: Date, hasEntry: boolean) => {
-    if (!hasEntry) {
-        setSelectedDate(null);
-        return;
+    const entry = dataByDate[format(day, 'yyyy-MM-dd')];
+
+    // If clicking on a day with no entry, or the currently open day, close the panel
+    if (!hasEntry || (panelPosition && isSameDay(day, panelPosition))) {
+      handleClosePanel();
+      return;
     }
-    if (selectedDate && isSameDay(day, selectedDate)) {
-        setSelectedDate(null); // Toggle off
+
+    const openNewPanel = () => {
+      setPanelPosition(day);
+      setPanelData(entry);
+      // Wait for the next frame to apply the 'visible' class,
+      // allowing the fade-in transition to work.
+      requestAnimationFrame(() => {
+        setIsPanelVisible(true);
+      });
+    };
+
+    // If a different panel is already open, transition smoothly by fading out first
+    if (isPanelVisible) {
+      setIsPanelVisible(false); // Start fade-out of old panel
+      setTimeout(openNewPanel, 300); // After fade-out, open the new one
     } else {
-        setSelectedDate(day);
+      // If no panel is open, just open the new one
+      openNewPanel();
     }
   };
 
@@ -47,8 +73,6 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
       }
       return chunks;
   }, [currentDate]);
-
-  const selectedEntry = selectedDate ? dataByDate[format(selectedDate, 'yyyy-MM-dd')] : null;
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -73,7 +97,7 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
       </div>
       <div className="flex flex-col flex-1 gap-1.5">
         {weeks.map((week, weekIndex) => {
-            const isDetailsRow = selectedDate && week.some(day => isSameDay(day, selectedDate));
+            const isDetailsRow = panelPosition && week.some(day => isSameDay(day, panelPosition));
             return (
                 <React.Fragment key={weekIndex}>
                     <div className="grid grid-cols-7 gap-1.5" style={{minHeight: '50px'}}>
@@ -104,8 +128,13 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
                             );
                         })}
                     </div>
-                    {isDetailsRow && selectedEntry && (
-                         <DetailsPanel entry={selectedEntry} allTags={allTags} onClose={() => setSelectedDate(null)} />
+                    {isDetailsRow && panelData && (
+                         <DetailsPanel 
+                            entry={panelData} 
+                            allTags={allTags} 
+                            onClose={handleClosePanel}
+                            isVisible={isPanelVisible}
+                        />
                     )}
                 </React.Fragment>
             )
@@ -115,12 +144,12 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
   );
 };
 
-const DetailsPanel: React.FC<{entry: MoodEntry; allTags: Record<string, string>; onClose: () => void}> = ({ entry, allTags, onClose }) => {
+const DetailsPanel: React.FC<{entry: MoodEntry; allTags: Record<string, string>; onClose: () => void; isVisible: boolean;}> = ({ entry, allTags, onClose, isVisible }) => {
     const intensityOpacity = 0.15 + entry.intensity * 0.085;
     const intensityColor = `rgba(79, 70, 229, ${intensityOpacity})`;
 
     return (
-    <div className="bg-gray-700/60 col-span-7 rounded-lg p-4 mb-1.5 animate-fade-in-down relative backdrop-blur-sm border border-gray-600">
+    <div className={`bg-gray-700/60 col-span-7 rounded-lg p-4 mb-1.5 relative backdrop-blur-sm border border-gray-600 transition-opacity duration-300 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className="absolute top-2 right-2">
             <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7">
