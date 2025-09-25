@@ -100,7 +100,7 @@ const MoodCalendar: React.FC<{ data: MoodEntry[]; allTags: Record<string, string
             const isDetailsRow = panelPosition && week.some(day => isSameDay(day, panelPosition));
             return (
                 <React.Fragment key={weekIndex}>
-                    <div className="grid grid-cols-7 gap-1.5" style={{minHeight: '50px'}}>
+                    <div className="grid grid-cols-7 gap-1.5 flex-1">
                         {week.map(day => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const entry = dataByDate[dateStr];

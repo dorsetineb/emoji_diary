@@ -1,15 +1,19 @@
 import React, { useEffect, useRef } from 'react';
-// FIX: Reverted to a namespace import for 'd3' to resolve module resolution errors with named imports.
-// This ensures that all d3 functions and types are correctly accessed via the `d3` namespace.
 import * as d3 from 'd3';
 import { MoodEntry, MoodId } from '../types';
 import { MOODS } from '../constants';
 
-// FIX: Extend `d3.SimulationNodeDatum` to provide the necessary properties (`x`, `y`, `fx`, `fy`)
-// for nodes used in the d3 force simulation, which are automatically added by the simulation.
-interface Node extends d3.SimulationNodeDatum {
+// FIX: Explicitly added properties from `d3.SimulationNodeDatum` to the Node interface.
+// This resolves errors where properties like `x`, `y`, `fx`, and `fy` were not found on the type.
+// The d3 force simulation adds these properties to nodes to manage their position, and this
+// change makes them available to TypeScript.
+interface Node {
   id: string;
   entry: MoodEntry;
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 const MoodGalaxy: React.FC<{ data: MoodEntry[] }> = ({ data }) => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { MoodEntry, ViewType } from './types';
 import { INITIAL_MOOD_DATA, MOODS, PREDEFINED_TAGS } from './constants';
 import MoodInput from './components/MoodInput';
@@ -10,6 +10,7 @@ const App: React.FC = () => {
   const [entries, setEntries] = useState<MoodEntry[]>(INITIAL_MOOD_DATA);
   const [view, setView] = useState<ViewType>('calendar');
   const [allTags, setAllTags] = useState<Record<string, string>>(PREDEFINED_TAGS);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const todayStr = format(startOfToday(), 'yyyy-MM-dd');
   const todayEntry = useMemo(() => entries.find(e => e.date === todayStr), [entries, todayStr]);
@@ -36,6 +37,59 @@ const App: React.FC = () => {
     });
   };
 
+  const handleExport = () => {
+    if (entries.length === 0) {
+        alert("Não há dados para exportar.");
+        return;
+    }
+    const dataToExport = {
+        entries,
+        allTags,
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(dataToExport, null, 2)
+    )}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    link.download = `diario-emoji-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target?.result;
+            if (typeof text !== 'string') throw new Error("O conteúdo do arquivo não é texto.");
+            const importedData = JSON.parse(text);
+
+            if (importedData && Array.isArray(importedData.entries) && typeof importedData.allTags === 'object') {
+                setEntries(importedData.entries);
+                setAllTags(importedData.allTags);
+                alert('Dados importados com sucesso!');
+            } else {
+                throw new Error("Formato de arquivo inválido.");
+            }
+        } catch (error) {
+            console.error("Erro ao importar arquivo:", error);
+            alert(`Erro ao importar arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        }
+    };
+    reader.onerror = () => {
+        alert('Falha ao ler o arquivo.');
+    }
+    reader.readAsText(file);
+    if(event.target) {
+        event.target.value = ''; 
+    }
+  };
+
+
   const ViewComponent = () => {
     switch (view) {
       case 'calendar':
@@ -55,7 +109,7 @@ const App: React.FC = () => {
             <MoodInput onSave={handleSaveMood} existingEntry={todayEntry} allTags={allTags} />
           </div>
           <div className="lg:col-span-2">
-            <div className="bg-gray-800/50 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-gray-700 h-full flex flex-col">
+            <div className="bg-gray-800/50 rounded-2xl shadow-lg p-6 backdrop-blur-sm border border-gray-700 h-full grid grid-rows-[auto_1fr_auto]">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">Suas Visualizações</h2>
                 <div className="flex space-x-2 bg-gray-700/50 p-1 rounded-lg">
@@ -63,8 +117,32 @@ const App: React.FC = () => {
                   <ViewButton icon={ChartBarIcon} label="Tendências" currentView={view} setView={setView} viewType="trends" />
                 </div>
               </div>
-              <div className="w-full flex-1 min-h-0">
+              <div className="w-full min-h-0">
                 <ViewComponent />
+              </div>
+              <div className="flex justify-end items-center gap-3 mt-4 pt-4 border-t border-gray-700/50">
+                  <input
+                      type="file"
+                      ref={importInputRef}
+                      onChange={handleImport}
+                      accept=".json"
+                      className="hidden"
+                      aria-hidden="true"
+                  />
+                  <button
+                      onClick={() => importInputRef.current?.click()}
+                      className="flex items-center gap-2 text-sm font-medium text-gray-300 bg-gray-700/60 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500"
+                  >
+                      <UploadIcon className="w-5 h-5" />
+                      Importar
+                  </button>
+                  <button
+                      onClick={handleExport}
+                      className="flex items-center gap-2 text-sm font-medium text-gray-300 bg-gray-700/60 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500"
+                  >
+                      <DownloadIcon className="w-5 h-5" />
+                      Exportar
+                  </button>
               </div>
             </div>
           </div>
@@ -107,5 +185,16 @@ const ChartBarIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     </svg>
 );
 
+const UploadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+    </svg>
+);
+
+const DownloadIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
 
 export default App;

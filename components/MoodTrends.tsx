@@ -49,7 +49,7 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
     return Object.entries(counts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 10);
   }, [data]);
 
   const wordCloudData = useMemo(() => {
@@ -71,13 +71,13 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
     const sortedWords = Object.entries(counts)
         .map(([word, count]) => ({ word, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 25);
+        .slice(0, 50);
     
     const maxCount = sortedWords[0]?.count || 1;
 
     return sortedWords.map(item => ({
         ...item,
-        fontSize: 10 + (item.count / maxCount) * 8, // from 10px to 18px
+        fontSize: 12 + (item.count / maxCount) * 12,
     }));
   }, [data]);
 
@@ -94,13 +94,13 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
   };
 
   return (
-    <div className="w-full h-full flex flex-col space-y-6 overflow-y-auto pr-2">
+    <div className="w-full h-full flex flex-col space-y-6">
       {/* Seção Humor */}
-      <div>
+      <div className="flex-1 flex flex-col min-h-0">
         <h3 className="text-xl font-bold text-gray-300 border-b border-gray-700 pb-2">Humor</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-0">
           
-          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col h-[250px]">
+          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col">
             <h4 className="text-base font-semibold mb-2 text-center text-white">Frequência de Humor</h4>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={moodFrequencyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -117,7 +117,7 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col h-[250px]">
+          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col">
             <h4 className="text-base font-semibold mb-2 text-center text-white">Intensidade Média</h4>
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={moodIntensityData}>
@@ -132,14 +132,14 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
       </div>
 
       {/* Seção Temas */}
-      <div>
+      <div className="flex-1 flex flex-col min-h-0">
         <h3 className="text-xl font-bold text-gray-300 border-b border-gray-700 pb-2">Temas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-0">
 
-          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col h-[250px]">
+          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col">
             <h4 className="text-base font-semibold mb-2 text-center text-white">Tags Mais Utilizadas</h4>
             <div className="space-y-3 flex-1 overflow-y-auto pr-2 pt-2">
-              {tagFrequencyData.map((tag, index) => {
+              {tagFrequencyData.length > 0 ? tagFrequencyData.map((tag, index) => {
                 const maxCount = tagFrequencyData[0]?.count || 1;
                 const width = (tag.count / maxCount) * 100;
                 const color = allTags[tag.name] || '#6b7280';
@@ -153,18 +153,18 @@ const MoodTrends: React.FC<{ data: MoodEntry[]; allTags: Record<string, string> 
                     </div>
                   </div>
                 )
-              })}
+              }) : <p className="text-gray-500 italic text-center pt-4">Nenhuma tag utilizada.</p>}
             </div>
           </div>
 
-          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col h-[250px]">
+          <div className="bg-gray-800/50 p-4 rounded-lg flex flex-col">
             <h4 className="text-base font-semibold mb-2 text-center text-white">Notas em Nuvem</h4>
-            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0 flex-1 overflow-y-auto">
+            <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0 flex-1 overflow-y-auto p-2">
               {wordCloudData.length > 0 ? wordCloudData.map(({ word, fontSize }) => (
                 <span key={word} className="text-gray-300 transition-colors hover:text-white" style={{ fontSize: `${fontSize}px`, lineHeight: 1 }}>
                   {word}
                 </span>
-              )) : <p className="text-gray-500 italic">Sem notas suficientes.</p>}
+              )) : <p className="text-gray-500 italic text-center pt-4">Sem notas suficientes.</p>}
             </div>
           </div>
         </div>
